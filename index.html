@@ -1,239 +1,384 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta http-equiv="Permissions-Policy" content="accelerometer=*,gyroscope=*,magnetometer=*"><title>Phone Tilt Direction Tester</title><style>
-*{box-sizing:border-box}body{margin:0;background:#101214;color:#eee;font:15px Arial}header{text-align:center;padding:15px;background:#181b1f}h1{font-size:20px;margin:0 0 5px}.small,.note{font-size:12px;color:#aaa;line-height:1.5}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Phone Tilt Direction Tester</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101214;color:#eee;font:15px Arial}
+header{text-align:center;padding:15px;background:#181b1f}
+h1{font-size:20px;margin:0 0 5px}
+.small,.note{font-size:12px;color:#aaa;line-height:1.5}
 #stage{height:40vh;min-height:270px;margin:12px;border:2px solid #444;border-radius:16px;background:#15181b;position:relative;overflow:hidden}
 #dot{position:absolute;width:30px;height:30px;border-radius:50%;background:#00e5ff;box-shadow:0 0 22px #00e5ff;left:50%;top:50%;transform:translate(-50%,-50%);will-change:left,top}
-.lh,.lv{position:absolute;background:#2b3036}.lh{height:1px;left:0;right:0;top:50%}.lv{width:1px;top:0;bottom:0;left:50%}
-.wrap{padding:0 12px 20px}.card{background:#181b1f;padding:12px;border-radius:11px;margin-top:9px}
-button{width:100%;padding:12px;margin:4px 0;border:0;border-radius:9px;background:#2d6f55;color:#fff;font-weight:bold}.alt{background:#8b2f5c}.gray{background:#343a40}
-#status{text-align:center;color:#ffd166;padding:7px;font-size:13px}.direction{background:#101214;padding:10px;border-radius:8px;margin-top:7px;font-weight:bold}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{font-size:12px;color:#aaa}input{width:100%;padding:9px;margin-top:4px;background:#101214;color:#fff;border:1px solid #454b52;border-radius:7px;font-size:15px}
-.vals{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.val{background:#101214;padding:8px;text-align:center;border-radius:8px}.val b{display:block;color:#aaa;font-size:11px}.val span{font-size:15px}
-pre{white-space:pre-wrap;word-break:break-word;background:#101214;padding:10px;border-radius:8px;font-size:11px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{border-bottom:1px solid #333;padding:6px;text-align:left}.ok{color:#7ee787}.bad{color:#ff7b72}
-</style></head><body>
-<header><h1>Phone Tilt Direction Tester</h1><div class="small">The dot follows how you LEAN the phone</div></header>
-<div id="stage"><div class="lh"></div><div class="lv"></div><div id="dot"></div></div><div class="wrap">
-<button id="start">ALLOW & START SENSOR</button><button id="zero">SET CURRENT POSITION AS CENTER</button><button id="stop" class="alt">STOP</button><button id="reset" class="gray">RESET CALIBRATION</button>
-<div id="status">Press Start.</div>
+.lh,.lv{position:absolute;background:#2b3036}
+.lh{height:1px;left:0;right:0;top:50%}
+.lv{width:1px;top:0;bottom:0;left:50%}
+.wrap{padding:0 12px 20px}
+.card{background:#181b1f;padding:12px;border-radius:11px;margin-top:9px}
+button{width:100%;padding:12px;margin:4px 0;border:0;border-radius:9px;background:#2d6f55;color:#fff;font-weight:bold}
+button:disabled{opacity:.5}
+.alt{background:#8b2f5c}.gray{background:#343a40}
+#status{text-align:center;color:#ffd166;padding:9px;font-size:13px;min-height:36px}
+.direction{background:#101214;padding:10px;border-radius:8px;margin-top:7px;font-weight:bold}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{font-size:12px;color:#aaa}
+input{width:100%;padding:9px;margin-top:4px;background:#101214;color:#fff;border:1px solid #454b52;border-radius:7px;font-size:15px}
+.vals{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.val{background:#101214;padding:8px;text-align:center;border-radius:8px}
+.val b{display:block;color:#aaa;font-size:11px}.val span{font-size:15px}
+pre{white-space:pre-wrap;word-break:break-word;background:#101214;padding:10px;border-radius:8px;font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+td,th{border-bottom:1px solid #333;padding:6px;text-align:left}
+.ok{color:#7ee787}.bad{color:#ff7b72}
+</style>
+</head>
+<body>
+<header>
+<h1>Phone Tilt Direction Tester</h1>
+<div class="small">The dot follows how you LEAN the phone</div>
+</header>
 
-<div class="card"><b>Physical direction</b><div id="direction" class="direction">Direction: —</div><div id="amount" class="direction">Tilt: —</div><div class="note">This version uses phone orientation/tilt directly instead of integrating gyro speed. The dot smoothly follows the corrected tilt instead of jumping between sensor readings.</div></div>
+<div id="stage">
+<div class="lh"></div><div class="lv"></div><div id="dot"></div>
+</div>
 
-<div class="card"><b>Calibration</b><div class="note">Start with these values. Do not leave fields empty.</div><div class="grid">
+<div class="wrap">
+<button id="startBtn">ALLOW & START SENSOR</button>
+<button id="centerBtn" disabled>SET CURRENT POSITION AS CENTER</button>
+<button id="stopBtn" class="alt" disabled>STOP</button>
+<button id="resetBtn" class="gray">RESET CALIBRATION</button>
+
+<div id="status">Press Allow & Start Sensor.</div>
+
+<div class="card">
+<b>Physical direction</b>
+<div id="direction" class="direction">Direction: —</div>
+<div id="amount" class="direction">Tilt: —</div>
+<div class="note">The dot uses phone orientation/tilt directly and moves smoothly.</div>
+</div>
+
+<div class="card">
+<b>Calibration</b>
+<div class="note">Start with H=1.00 and V=1.00.</div>
+<div class="grid">
 <div><label>LEFT ↔ RIGHT scale</label><input id="hs" type="number" step=".05" value="1"></div>
 <div><label>UP ↕ DOWN scale</label><input id="vs" type="number" step=".05" value="1"></div>
 <div><label>LEFT ↔ RIGHT offset</label><input id="ho" type="number" step=".5" value="0"></div>
 <div><label>UP ↕ DOWN offset</label><input id="vo" type="number" step=".5" value="0"></div>
 </div>
-<div class="note"><b>Try:</b> normal H=1.00 V=1.00; reverse horizontal H=-1.00; reverse vertical V=-1.00; too sensitive 0.75 then 0.50; too weak 1.25 then 1.50.</div></div>
+</div>
 
-<div class="card"><b>RAW ORIENTATION</b><div class="vals"><div class="val"><b>Left / Right</b><span id="rh">0.00°</span></div><div class="val"><b>Up / Down</b><span id="rv">0.00°</span></div></div></div>
+<div class="card">
+<b>RAW ORIENTATION</b>
+<div class="vals">
+<div class="val"><b>Left / Right</b><span id="rh">0.00°</span></div>
+<div class="val"><b>Up / Down</b><span id="rv">0.00°</span></div>
+</div>
+</div>
 
-<div class="card"><b>CORRECTED OUTPUT</b><div class="vals"><div class="val"><b>Horizontal</b><span id="ch">0.00°</span></div><div class="val"><b>Vertical</b><span id="cv">0.00°</span></div></div><div id="reflection" class="direction">Calibration reflection: waiting…</div><div class="note">If you change a scale, RAW should stay unchanged while CORRECTED changes. The dot uses CORRECTED values directly.</div></div>
+<div class="card">
+<b>CORRECTED OUTPUT</b>
+<div class="vals">
+<div class="val"><b>Horizontal</b><span id="ch">0.00°</span></div>
+<div class="val"><b>Vertical</b><span id="cv">0.00°</span></div>
+</div>
+<div id="reflection" class="direction">Calibration reflection: waiting…</div>
+</div>
 
-<div class="card"><b>REPORT</b><button id="record">RECORD CURRENT TEST</button><button id="clear" class="gray">CLEAR TESTS</button><div id="log" class="note">No tests recorded.</div><button id="download">DOWNLOAD REPORT</button><button id="copy" class="gray">COPY REPORT</button><pre id="report">No report yet.</pre></div>
+<div class="card">
+<b>DEBUG</b>
+<pre id="debug">Not started.</pre>
+</div>
+
+<div class="card">
+<b>REPORT</b>
+<button id="recordBtn">RECORD CURRENT TEST</button>
+<button id="clearBtn" class="gray">CLEAR TESTS</button>
+<div id="log" class="note">No tests recorded.</div>
+<button id="downloadBtn">DOWNLOAD REPORT</button>
+<button id="copyBtn" class="gray">COPY REPORT</button>
+<pre id="report">No report yet.</pre>
+</div>
 </div>
 
 <script>
-let running=false,baseH=0,baseV=0;
+(function(){
+"use strict";
+
+const $ = id => document.getElementById(id);
+
+const startBtn=$("startBtn"), centerBtn=$("centerBtn"), stopBtn=$("stopBtn"), resetBtn=$("resetBtn");
+const stage=$("stage"), dot=$("dot"), status=$("status"), debug=$("debug");
+const rh=$("rh"),rv=$("rv"),chEl=$("ch"),cvEl=$("cv");
+const directionEl=$("direction"),amountEl=$("amount"),reflection=$("reflection");
+const hs=$("hs"),vs=$("vs"),ho=$("ho"),vo=$("vo");
+const recordBtn=$("recordBtn"),clearBtn=$("clearBtn"),downloadBtn=$("downloadBtn"),copyBtn=$("copyBtn");
+const log=$("log"),report=$("report");
+
+let running=false;
+let gotOrientation=false;
+let permissionResult="not requested";
+let eventCount=0;
+let baseH=0,baseV=0;
 let latest={h:0,v:0,ch:0,cv:0};
-let previous=null,tests=[];
-
-// Sensor output becomes a target. The animation loop follows it smoothly.
 let targetX=0,targetY=0,currentX=0,currentY=0;
+let tests=[];
 
-const stage=document.getElementById('stage'),dot=document.getElementById('dot');
-const rh=document.getElementById('rh'),rv=document.getElementById('rv');
-const chEl=document.getElementById('ch'),cvEl=document.getElementById('cv');
-const directionEl=document.getElementById('direction'),amountEl=document.getElementById('amount');
-const reflection=document.getElementById('reflection'),status=document.getElementById('status');
-const log=document.getElementById('log'),report=document.getElementById('report');
-const hs=document.getElementById('hs'),vs=document.getElementById('vs'),ho=document.getElementById('ho'),vo=document.getElementById('vo');
-
-const n=id=>{
- let x=parseFloat(document.getElementById(id).value);
+function num(el){
+ const x=parseFloat(el.value);
  return Number.isFinite(x)?x:0;
-};
-
-const cor=(raw,base,off,scale)=>(raw-base+off)*scale;
-
-const dir=(h,v)=>{
- if(Math.max(Math.abs(h),Math.abs(v))<1)return 'Direction: CENTER';
- return Math.abs(h)>=Math.abs(v)?(h>0?'Direction: RIGHT':'Direction: LEFT'):(v>0?'Direction: DOWN':'Direction: UP');
-};
-
+}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function corrected(raw,base,offset,scale){return (raw-base+offset)*scale;}
+
+function setStatus(msg,kind){
+ status.innerHTML=(kind==="ok" ? '<span class="ok">'+msg+'</span>' :
+                   kind==="bad" ? '<span class="bad">'+msg+'</span>' : msg);
+}
+
+function updateDebug(extra){
+ debug.textContent=
+ "URL: "+location.href+
+ "\\nProtocol: "+location.protocol+
+ "\\nSecure context: "+window.isSecureContext+
+ "\\nDeviceOrientationEvent: "+("DeviceOrientationEvent" in window)+
+ "\\nOrientation permission API: "+(typeof DeviceOrientationEvent!=="undefined" && typeof DeviceOrientationEvent.requestPermission==="function")+
+ "\\nDeviceMotion permission API: "+(typeof DeviceMotionEvent!=="undefined" && typeof DeviceMotionEvent.requestPermission==="function")+
+ "\\nPermission result: "+permissionResult+
+ "\\nListener running: "+running+
+ "\\nOrientation events received: "+eventCount+
+ (extra ? "\\n\\n"+extra : "");
+}
+
+function direction(h,v){
+ if(Math.max(Math.abs(h),Math.abs(v))<1) return "Direction: CENTER";
+ if(Math.abs(h)>=Math.abs(v)) return h>0 ? "Direction: RIGHT" : "Direction: LEFT";
+ return v>0 ? "Direction: DOWN" : "Direction: UP";
+}
 
 function render(h,v){
- let newCh=cor(h,baseH,n('ho'),n('hs'));
- let newCv=cor(v,baseV,n('vo'),n('vs'));
+ const ch=corrected(h,baseH,num(ho),num(hs));
+ const cv=corrected(v,baseV,num(vo),num(vs));
 
- latest={h:h,v:v,ch:newCh,cv:newCv};
+ latest={h:h,v:v,ch:ch,cv:cv};
 
- rh.textContent=h.toFixed(2)+'°';
- rv.textContent=v.toFixed(2)+'°';
- chEl.textContent=newCh.toFixed(2)+'°';
- cvEl.textContent=newCv.toFixed(2)+'°';
+ rh.textContent=h.toFixed(2)+"°";
+ rv.textContent=v.toFixed(2)+"°";
+ chEl.textContent=ch.toFixed(2)+"°";
+ cvEl.textContent=cv.toFixed(2)+"°";
 
- directionEl.textContent=dir(newCh,newCv);
- amountEl.textContent='Tilt: '+Math.hypot(newCh,newCv).toFixed(1)+'°';
+ directionEl.textContent=direction(ch,cv);
+ amountEl.textContent="Tilt: "+Math.hypot(ch,cv).toFixed(1)+"°";
 
- // Convert corrected orientation to target position.
- targetX=clamp(newCh/25,-1,1);
- targetY=clamp(newCv/25,-1,1);
+ // Corrected orientation becomes a target; animation loop moves toward it.
+ targetX=clamp(ch/25,-1,1);
+ targetY=clamp(cv/25,-1,1);
 
- if(previous){
-   let rd=Math.abs(h-previous.h)+Math.abs(v-previous.v);
-   let cd=Math.abs(newCh-previous.ch)+Math.abs(newCv-previous.cv);
-   reflection.textContent='RAW: '+(rd<.01?'unchanged':'changing')+' | CORRECTED: '+(cd<.01?'unchanged':'changing');
+ updateDebug();
+}
+
+function orientationHandler(e){
+ if(!running) return;
+
+ if(e.gamma==null || e.beta==null){
+   updateDebug("Event arrived, but beta/gamma are null.");
+   return;
  }
+
+ gotOrientation=true;
+ eventCount++;
+ render(e.gamma,e.beta);
+ setStatus("Running — sensor data received","ok");
+ centerBtn.disabled=false;
 }
 
-function animationLoop(){
- // Same visual style as the previous tester, but smoothly animated.
- // 0.16 gives a responsive but visibly smooth movement.
- const smoothing=0.16;
- currentX+=(targetX-currentX)*smoothing;
- currentY+=(targetY-currentY)*smoothing;
+async function startSensor(){
+ startBtn.disabled=true;
+ setStatus("Requesting sensor permission…");
+ updateDebug("Button click received.");
 
- dot.style.left=(50+currentX*45)+'%';
- dot.style.top=(50+currentY*45)+'%';
-
- requestAnimationFrame(animationLoop);
-}
-
-function orientation(e){
- if(!running)return;
- let h=Number.isFinite(e.gamma)?e.gamma:0;
- let v=Number.isFinite(e.beta)?e.beta:0;
- render(h,v);
-}
-
-async function start(){
  try{
-   if(typeof DeviceOrientationEvent==='undefined'){
-     status.textContent='Device orientation is not supported';
-     return;
+   if(!("DeviceOrientationEvent" in window)){
+     throw new Error("DeviceOrientationEvent is not available in this browser.");
    }
 
-   // No custom HTTPS rejection. GitHub Pages is HTTPS and the browser decides permission.
-   if(typeof DeviceOrientationEvent.requestPermission==='function'){
-     let p=await DeviceOrientationEvent.requestPermission();
-     if(p!=='granted'){
-       status.innerHTML='<span class="bad">Permission denied</span>';
-       return;
+   // Some browsers expose separate permission requests for motion and orientation.
+   // Request both when available, directly from this button click.
+   if(typeof DeviceMotionEvent!=="undefined" &&
+      typeof DeviceMotionEvent.requestPermission==="function"){
+     permissionResult="requesting motion";
+     const mp=await DeviceMotionEvent.requestPermission();
+     if(mp!=="granted"){
+       permissionResult="motion: "+mp;
+       throw new Error("Motion permission was "+mp);
      }
+     permissionResult="motion: granted";
    }
+
+   if(typeof DeviceOrientationEvent.requestPermission==="function"){
+     permissionResult+="; requesting orientation";
+     const op=await DeviceOrientationEvent.requestPermission();
+     if(op!=="granted"){
+       permissionResult+="; orientation: "+op;
+       throw new Error("Orientation permission was "+op);
+     }
+     permissionResult+="; orientation: granted";
+   }else{
+     permissionResult="no explicit permission API; listener used";
+   }
+
+   // Install listener only after permission succeeds.
+   window.addEventListener("deviceorientation",orientationHandler,true);
 
    running=true;
-   addEventListener('deviceorientation',orientation,true);
-   status.innerHTML='<span class="ok">Running — hold normally and lean slowly</span>';
- }catch(e){
-   status.textContent='Sensor error: '+e.message;
+   eventCount=0;
+   gotOrientation=false;
+   stopBtn.disabled=false;
+   centerBtn.disabled=false;
+
+   setStatus("Sensor started — tilt the phone slowly.","ok");
+   updateDebug("Waiting for the first orientation event…");
+
+   // If Chrome/browser supplies no event, give a precise diagnosis instead of silently doing nothing.
+   setTimeout(function(){
+     if(running && !gotOrientation){
+       setStatus("Started, but Chrome sent NO orientation data. Check this site's Motion sensors permission.","bad");
+       updateDebug("No deviceorientation event received after 3 seconds.");
+     }
+   },3000);
+
+ }catch(err){
+   running=false;
+   startBtn.disabled=false;
+   stopBtn.disabled=true;
+   setStatus("START FAILED: "+err.name+" — "+err.message,"bad");
+   updateDebug("The start operation threw an error.");
  }
 }
 
-function zero(){
- if(!running){
-   status.textContent='Start sensor first';
+function setCenter(){
+ if(!gotOrientation){
+   setStatus("Move the phone once first so sensor data is received.","bad");
    return;
  }
  baseH=latest.h;
  baseV=latest.v;
  targetX=0;
  targetY=0;
- reflection.textContent='Current position set as CENTER';
+ setStatus("Current phone position saved as CENTER.","ok");
+ render(latest.h,latest.v);
 }
 
-function stop(){
+function stopSensor(){
  running=false;
- removeEventListener('deviceorientation',orientation,true);
- status.textContent='Stopped';
+ window.removeEventListener("deviceorientation",orientationHandler,true);
+ stopBtn.disabled=true;
+ startBtn.disabled=false;
+ setStatus("Sensor stopped.");
+ updateDebug();
 }
 
-function reset(){
- hs.value=vs.value=1;
- ho.value=vo.value=0;
- baseH=latest.h;
- baseV=latest.v;
+function resetCalibration(){
+ hs.value=1; vs.value=1; ho.value=0; vo.value=0;
+ baseH=latest.h; baseV=latest.v;
  targetX=targetY=0;
- previous=null;
- reflection.textContent='Calibration reflection: waiting…';
+ currentX=currentY=0;
+ reflection.textContent="Calibration reflection: waiting…";
+ if(gotOrientation) render(latest.h,latest.v);
 }
 
-function record(){
- let q={
+function animationLoop(){
+ const smoothing=.16;
+ currentX+=(targetX-currentX)*smoothing;
+ currentY+=(targetY-currentY)*smoothing;
+
+ const x=clamp(50+currentX*45,5,95);
+ const y=clamp(50+currentY*45,5,95);
+
+ dot.style.left=x+"%";
+ dot.style.top=y+"%";
+
+ requestAnimationFrame(animationLoop);
+}
+
+function recordTest(){
+ if(!gotOrientation){
+   setStatus("No sensor data to record.","bad");
+   return;
+ }
+ tests.push({
    time:new Date().toLocaleString(),
    h:latest.h,v:latest.v,ch:latest.ch,cv:latest.cv,
-   hs:n('hs'),vs:n('vs'),ho:n('ho'),vo:n('vo'),
-   dir:dir(latest.ch,latest.cv)
- };
- tests.push(q);
- previous={...latest};
+   hs:num(hs),vs:num(vs),ho:num(ho),vo:num(vo),
+   dir:direction(latest.ch,latest.cv)
+ });
  renderLog();
  makeReport();
 }
 
 function renderLog(){
- if(!tests.length){
-   log.textContent='No tests recorded.';
-   return;
- }
- let s='<table><tr><th>#</th><th>Direction</th><th>Raw H/V</th><th>Corrected H/V</th><th>Scale</th></tr>';
+ if(!tests.length){log.textContent="No tests recorded.";return;}
+ let s="<table><tr><th>#</th><th>Direction</th><th>Raw H/V</th><th>Corrected H/V</th></tr>";
  tests.forEach((q,i)=>{
-   s+=`<tr><td>${i+1}</td><td>${q.dir.replace('Direction: ','')}</td><td>${q.h.toFixed(2)} / ${q.v.toFixed(2)}</td><td>${q.ch.toFixed(2)} / ${q.cv.toFixed(2)}</td><td>${q.hs} / ${q.vs}</td></tr>`;
+   s+="<tr><td>"+(i+1)+"</td><td>"+q.dir.replace("Direction: ","")+
+   "</td><td>"+q.h.toFixed(2)+" / "+q.v.toFixed(2)+
+   "</td><td>"+q.ch.toFixed(2)+" / "+q.cv.toFixed(2)+"</td></tr>";
  });
- log.innerHTML=s+'</table>';
+ log.innerHTML=s+"</table>";
 }
 
 function makeReport(){
- let s='PHONE TILT DIRECTION & CALIBRATION REPORT\\nGenerated: '+new Date().toString()+'\\n\\n';
- s+='This webpage transforms browser orientation only; it does not modify the Realme sensor/HAL/BGMI.\\n\\n';
- s+='CENTER: H='+baseH.toFixed(3)+'°, V='+baseV.toFixed(3)+'°\\n';
- s+='CALIBRATION: H scale='+n('hs')+' offset='+n('ho')+'; V scale='+n('vs')+' offset='+n('vo')+'\\n\\n';
- s+='TESTS\\n';
+ let s="PHONE TILT DIRECTION TEST REPORT\\nGenerated: "+new Date().toString()+"\\n\\n";
+ s+="CENTER H/V: "+baseH.toFixed(3)+" / "+baseV.toFixed(3)+"°\\n";
+ s+="CALIBRATION H scale="+num(hs)+" offset="+num(ho)+"; V scale="+num(vs)+" offset="+num(vo)+"\\n\\n";
  tests.forEach((q,i)=>{
-   s+=`#${i+1} ${q.time}\\n${q.dir}\\nRAW H/V: ${q.h.toFixed(3)} / ${q.v.toFixed(3)}°\\nCORRECTED H/V: ${q.ch.toFixed(3)} / ${q.cv.toFixed(3)}°\\nSCALE H/V: ${q.hs} / ${q.vs}\\n\\n`;
+   s+="#"+(i+1)+" "+q.time+"\\n"+q.dir+
+   "\\nRAW H/V: "+q.h.toFixed(3)+" / "+q.v.toFixed(3)+"°"+
+   "\\nCORRECTED H/V: "+q.ch.toFixed(3)+" / "+q.cv.toFixed(3)+"°\\n\\n";
  });
- s+='If RAW stays unchanged while CORRECTED changes after changing a scale, webpage calibration is working. It does not recalibrate Android hardware.';
  report.textContent=s;
  return s;
 }
 
-start.onclick=start;
-zero.onclick=zero;
-stop.onclick=stop;
-reset.onclick=reset;
+startBtn.addEventListener("click",startSensor);
+centerBtn.addEventListener("click",setCenter);
+stopBtn.addEventListener("click",stopSensor);
+resetBtn.addEventListener("click",resetCalibration);
+recordBtn.addEventListener("click",recordTest);
 
-record.onclick=record;
+clearBtn.addEventListener("click",function(){
+ tests=[];renderLog();makeReport();
+});
 
-clear.onclick=()=>{
- tests=[];
- renderLog();
- makeReport();
-};
-
-download.onclick=()=>{
- let a=document.createElement('a');
- a.href=URL.createObjectURL(new Blob([makeReport()],{type:'text/plain'}));
- a.download='phone_tilt_calibration_report.txt';
+downloadBtn.addEventListener("click",function(){
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(new Blob([makeReport()],{type:"text/plain"}));
+ a.download="phone_tilt_calibration_report.txt";
  a.click();
-};
+ URL.revokeObjectURL(a.href);
+});
 
-copy.onclick=async()=>{
+copyBtn.addEventListener("click",async function(){
  try{
    await navigator.clipboard.writeText(makeReport());
-   status.textContent='Report copied';
+   setStatus("Report copied.","ok");
  }catch(e){
-   status.textContent='Use Download Report';
+   setStatus("Copy unavailable — use Download Report.","bad");
  }
-};
+});
 
 [hs,vs,ho,vo].forEach(el=>{
- el.addEventListener('input',()=>{
-   if(latest){
-     render(latest.h,latest.v);
-   }
+ el.addEventListener("input",function(){
+   if(gotOrientation) render(latest.h,latest.v);
  });
 });
 
+updateDebug();
 animationLoop();
-</script></body></html>
+
+})();
+</script>
+</body>
+</html>
