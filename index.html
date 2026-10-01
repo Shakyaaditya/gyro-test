@@ -2,43 +2,63 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Phone Tilt Direction Tester</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Phone Tilt Direction Tester - Smooth</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:18px;color:#222}
-.card{max-width:650px;margin:auto;background:#fff;border-radius:14px;padding:18px;box-shadow:0 3px 15px #0002}
-h2{margin-top:0}
-button{padding:12px 16px;border:0;border-radius:9px;background:#222;color:#fff;font-size:16px;margin:5px;cursor:pointer}
-button:disabled{opacity:.5}
-.status{background:#eee;padding:10px;border-radius:8px;margin:10px 0;white-space:pre-wrap;font-size:14px}
-.row{display:flex;gap:10px;align-items:center;margin:12px 0}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#f3f3f3;margin:0;padding:16px;color:#222}
+.card{max-width:680px;margin:auto;background:#fff;border-radius:16px;padding:18px;box-shadow:0 3px 18px #0002}
+h2{margin:0 0 10px}
+button{padding:12px 16px;border:0;border-radius:9px;background:#222;color:#fff;font-size:15px;margin:4px;cursor:pointer}
+button:disabled{opacity:.45}
+.status{background:#eee;padding:10px;border-radius:9px;margin:10px 0;font-size:13px;line-height:1.45}
+#pad{width:min(320px,88vw);height:min(320px,88vw);margin:22px auto;border:2px solid #555;border-radius:50%;position:relative;background:#fafafa;overflow:hidden}
+.crossH,.crossV{position:absolute;background:#ddd}
+.crossH{height:1px;left:0;right:0;top:50%}
+.crossV{width:1px;top:0;bottom:0;left:50%}
+#dot{
+ width:30px;height:30px;border-radius:50%;background:#111;
+ position:absolute;left:50%;top:50%;
+ transform:translate(-50%,-50%);
+ will-change:left,top;
+}
+.controls{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin:10px 0}
 input{width:90px;padding:8px;font-size:16px}
-#pad{width:300px;height:300px;max-width:90vw;margin:20px auto;border:2px solid #555;border-radius:50%;position:relative;background:#fafafa}
-#dot{width:28px;height:28px;border-radius:50%;background:#111;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
-pre{background:#111;color:#0f0;padding:10px;border-radius:8px;overflow:auto}
-.small{font-size:13px;color:#555}
+pre{background:#111;color:#0f0;padding:11px;border-radius:9px;overflow:auto;font-size:13px}
+.small{font-size:12px;color:#666}
 </style>
 </head>
 <body>
 <div class="card">
-<h2>Phone Tilt Direction Tester</h2>
+<h2>Smooth Phone Tilt Direction Tester</h2>
 
-<div id="status" class="status">Press START SENSOR. This version does NOT perform an HTTPS check.</div>
+<div id="status" class="status">Press START SENSOR.</div>
 
 <button id="start">START SENSOR</button>
 <button id="center" disabled>SET CURRENT POSITION AS CENTER</button>
 
-<div id="pad"><div id="dot"></div></div>
+<div id="pad">
+  <div class="crossH"></div>
+  <div class="crossV"></div>
+  <div id="dot"></div>
+</div>
 
-<div class="row">LEFT ↔ RIGHT scale <input id="sx" type="number" step="0.1" value="1"></div>
-<div class="row">UP ↕ DOWN scale <input id="sy" type="number" step="0.1" value="1"></div>
-<div class="row">Dead zone <input id="dead" type="number" step="0.5" value="2"></div>
+<div class="controls">
+<label>LEFT ↔ RIGHT sensitivity</label>
+<input id="sx" type="number" step="0.1" value="2">
+<label>UP ↕ DOWN sensitivity</label>
+<input id="sy" type="number" step="0.1" value="2">
+<label>Smoothing</label>
+<input id="smooth" type="number" step="0.05" min="0.05" max="0.95" value="0.18">
+<label>Dead zone (degrees)</label>
+<input id="dead" type="number" step="0.5" min="0" value="1">
+</div>
 
 <pre id="data">No sensor data yet.</pre>
 
 <p class="small">
-This tester uses DeviceOrientation (phone tilt), not the raw gyroscope.
-It does not modify BGMI or Android sensor data.
+The dot now moves with animation using a continuously updated target position.
+Sensor changes are filtered instead of jumping directly from one position to another.
 </p>
 </div>
 
@@ -46,112 +66,192 @@ It does not modify BGMI or Android sensor data.
 const statusEl=document.getElementById('status');
 const dataEl=document.getElementById('data');
 const dot=document.getElementById('dot');
+const pad=document.getElementById('pad');
 const startBtn=document.getElementById('start');
 const centerBtn=document.getElementById('center');
+
 const sxEl=document.getElementById('sx');
 const syEl=document.getElementById('sy');
+const smoothEl=document.getElementById('smooth');
 const deadEl=document.getElementById('dead');
 
-let running=false, last=null, cx=0, cy=0, gotData=false;
+let sensorRunning=false;
+let gotData=false;
+let last=null;
+let centerX=0, centerY=0;
+
+// Animated position and target position.
+// The animation is independent from the sensor event rate.
+let currentX=0, currentY=0;
+let targetX=0, targetY=0;
 
 function showEnvironment(){
-  statusEl.textContent =
-    "URL: "+location.href+
-    "\\nProtocol: "+location.protocol+
-    "\\nSecure context: "+window.isSecureContext+
-    "\\nHost: "+location.host+
-    "\\nDeviceOrientation API: "+("DeviceOrientationEvent" in window)+
-    "\\nPermission API: "+(typeof DeviceOrientationEvent !== "undefined" &&
-                            typeof DeviceOrientationEvent.requestPermission === "function");
+ statusEl.textContent=
+ "Protocol: "+location.protocol+
+ "\\nSecure context: "+window.isSecureContext+
+ "\\nHost: "+location.host;
 }
 showEnvironment();
 
-function handleOrientation(e){
-  gotData=true;
-  if(e.gamma==null || e.beta==null){
-    statusEl.textContent="Sensor event received, but beta/gamma are unavailable.";
-    return;
-  }
-  last={gamma:e.gamma,beta:e.beta};
-  centerBtn.disabled=false;
-  update();
+function dimensions(){
+ return {
+   w:pad.clientWidth,
+   h:pad.clientHeight
+ };
 }
 
-function update(){
-  if(!last)return;
-  let x=(last.gamma-cx)*parseFloat(sxEl.value||1);
-  let y=(last.beta-cy)*parseFloat(syEl.value||1);
-  const dz=parseFloat(deadEl.value||0);
-  if(Math.abs(x)<dz)x=0;
-  if(Math.abs(y)<dz)y=0;
+function clamp(v,min,max){
+ return Math.max(min,Math.min(max,v));
+}
 
-  const max=45;
-  const px=Math.max(-135,Math.min(135,x/max*135));
-  const py=Math.max(-135,Math.min(135,y/max*135));
-  dot.style.left=(150+px)+"px";
-  dot.style.top=(150+py)+"px";
+function applyDeadZone(v,dz){
+ if(Math.abs(v)<=dz) return 0;
+ // Remove the dead-zone amount instead of creating a sudden jump.
+ return v>0 ? v-dz : v+dz;
+}
 
-  dataEl.textContent=
-    "RAW gamma (left/right): "+last.gamma.toFixed(2)+"°"+
-    "\\nRAW beta (up/down):    "+last.beta.toFixed(2)+"°"+
-    "\\nCENTER gamma:          "+cx.toFixed(2)+"°"+
-    "\\nCENTER beta:           "+cy.toFixed(2)+"°"+
-    "\\nCORRECTED X:           "+x.toFixed(2)+"°"+
-    "\\nCORRECTED Y:           "+y.toFixed(2)+"°";
+function calculateTarget(){
+ if(!last)return;
+
+ let x=last.gamma-centerX;
+ let y=last.beta-centerY;
+
+ const dz=Math.max(0,parseFloat(deadEl.value)||0);
+
+ x=applyDeadZone(x,dz);
+ y=applyDeadZone(y,dz);
+
+ x*=parseFloat(sxEl.value)||1;
+ y*=parseFloat(syEl.value)||1;
+
+ // 45 degrees = edge of useful range.
+ targetX=clamp(x/45,-1,1);
+ targetY=clamp(y/45,-1,1);
+}
+
+function animate(){
+ // Exponential-ish low-pass interpolation.
+ // Higher smoothing value = faster response.
+ const s=clamp(parseFloat(smoothEl.value)||0.18,0.03,0.95);
+
+ currentX += (targetX-currentX)*s;
+ currentY += (targetY-currentY)*s;
+
+ const d=dimensions();
+ const maxX=d.w/2-18;
+ const maxY=d.h/2-18;
+
+ const left=d.w/2 + currentX*maxX;
+ const top=d.h/2 + currentY*maxY;
+
+ dot.style.left=left+"px";
+ dot.style.top=top+"px";
+
+ requestAnimationFrame(animate);
+}
+
+function updateText(){
+ if(!last)return;
+
+ dataEl.textContent=
+ "RAW gamma (left/right): "+last.gamma.toFixed(2)+"°"+
+ "\\nRAW beta (up/down):    "+last.beta.toFixed(2)+"°"+
+ "\\nCENTER gamma:          "+centerX.toFixed(2)+"°"+
+ "\\nCENTER beta:           "+centerY.toFixed(2)+"°"+
+ "\\nTARGET X:              "+(targetX*45).toFixed(2)+"°"+
+ "\\nTARGET Y:              "+(targetY*45).toFixed(2)+"°"+
+ "\\nANIMATED X:            "+(currentX*45).toFixed(2)+"°"+
+ "\\nANIMATED Y:            "+(currentY*45).toFixed(2)+"°";
+}
+
+function handleOrientation(e){
+ if(e.gamma==null || e.beta==null){
+   return;
+ }
+
+ gotData=true;
+ last={
+   gamma:e.gamma,
+   beta:e.beta
+ };
+
+ centerBtn.disabled=false;
+ calculateTarget();
+ updateText();
+
+ if(sensorRunning){
+   statusEl.textContent="Sensor active — tilt the phone slowly. The dot should move smoothly.";
+ }
 }
 
 async function startSensor(){
-  showEnvironment();
-  statusEl.textContent="Starting sensor…";
+ showEnvironment();
 
-  try{
-    if(typeof DeviceOrientationEvent==="undefined"){
-      statusEl.textContent="DeviceOrientationEvent is not available in this browser/device.";
-      return;
-    }
+ try{
+   if(typeof DeviceOrientationEvent==="undefined"){
+     statusEl.textContent="DeviceOrientationEvent is not available in this browser.";
+     return;
+   }
 
-    // Some browsers expose requestPermission; others do not.
-    if(typeof DeviceOrientationEvent.requestPermission==="function"){
-      const permission=await DeviceOrientationEvent.requestPermission();
-      if(permission!=="granted"){
-        statusEl.textContent="Motion/orientation permission was not granted. Check the browser/site sensor permission.";
-        return;
-      }
-    }
+   if(typeof DeviceOrientationEvent.requestPermission==="function"){
+     const permission=await DeviceOrientationEvent.requestPermission();
+     if(permission!=="granted"){
+       statusEl.textContent="Orientation permission was not granted. Check Chrome's motion-sensor permission for this site.";
+       return;
+     }
+   }
 
-    window.addEventListener("deviceorientation",handleOrientation,true);
-    running=true;
-    startBtn.disabled=true;
-    centerBtn.disabled=false;
-    statusEl.textContent="Sensor listener started. Move/tilt the phone now…";
+   window.addEventListener("deviceorientation",handleOrientation,true);
 
-    setTimeout(()=>{
-      if(!gotData){
-        statusEl.textContent=
-          "Listener started, but NO orientation events arrived.\\n"+
-          "The page is being served from:\\n"+location.href+
-          "\\n\\nSecure context: "+window.isSecureContext+
-          "\\n\\nIf Secure context is true, check Chrome site permissions for Motion sensors.";
-      }
-    },3000);
-  }catch(err){
-    statusEl.textContent="Sensor start error: "+err.name+" — "+err.message;
-  }
+   sensorRunning=true;
+   startBtn.disabled=true;
+   centerBtn.disabled=false;
+
+   statusEl.textContent="Sensor active — waiting for orientation data…";
+
+   setTimeout(()=>{
+     if(!gotData){
+       statusEl.textContent=
+       "Sensor listener is active, but no orientation events arrived."+
+       "\\nSecure context: "+window.isSecureContext+
+       "\\nURL: "+location.href;
+     }
+   },3000);
+
+ }catch(err){
+   statusEl.textContent="Sensor start error: "+err.name+" — "+err.message;
+ }
 }
 
 startBtn.addEventListener("click",startSensor);
 
 centerBtn.addEventListener("click",()=>{
-  if(!last)return;
-  cx=last.gamma;
-  cy=last.beta;
-  update();
-  statusEl.textContent="Current phone position saved as CENTER.";
+ if(!last)return;
+
+ centerX=last.gamma;
+ centerY=last.beta;
+
+ targetX=0;
+ targetY=0;
+
+ statusEl.textContent="Current phone position saved as CENTER.";
+ calculateTarget();
+ updateText();
 });
 
-sxEl.addEventListener("input",update);
-syEl.addEventListener("input",update);
-deadEl.addEventListener("input",update);
+[sxEl,syEl,smoothEl,deadEl].forEach(el=>{
+ el.addEventListener("input",()=>{
+   calculateTarget();
+   updateText();
+ });
+});
+
+window.addEventListener("resize",()=>{
+ currentX=clamp(currentX,-1,1);
+ currentY=clamp(currentY,-1,1);
+});
+
+requestAnimationFrame(animate);
 </script>
 </body>
 </html>
