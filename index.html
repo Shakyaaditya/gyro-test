@@ -1,59 +1,157 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta http-equiv="Permissions-Policy" content="accelerometer=*,gyroscope=*,magnetometer=*"><title>Phone Tilt Direction Tester</title><style>
-*{box-sizing:border-box}body{margin:0;background:#101214;color:#eee;font:15px Arial}header{text-align:center;padding:15px;background:#181b1f}h1{font-size:20px;margin:0 0 5px}.small,.note{font-size:12px;color:#aaa;line-height:1.5}#stage{height:40vh;min-height:270px;margin:12px;border:2px solid #444;border-radius:16px;background:#15181b;position:relative;overflow:hidden}#dot{position:absolute;width:30px;height:30px;border-radius:50%;background:#00e5ff;box-shadow:0 0 22px #00e5ff;left:50%;top:50%;transform:translate(-50%,-50%);transition:.04s}.lh,.lv{position:absolute;background:#2b3036}.lh{height:1px;left:0;right:0;top:50%}.lv{width:1px;top:0;bottom:0;left:50%}.wrap{padding:0 12px 20px}.card{background:#181b1f;padding:12px;border-radius:11px;margin-top:9px}button{width:100%;padding:12px;margin:4px 0;border:0;border-radius:9px;background:#2d6f55;color:#fff;font-weight:bold}.alt{background:#8b2f5c}.gray{background:#343a40}#status{text-align:center;color:#ffd166;padding:7px;font-size:13px}.direction{background:#101214;padding:10px;border-radius:8px;margin-top:7px;font-weight:bold}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{font-size:12px;color:#aaa}input{width:100%;padding:9px;margin-top:4px;background:#101214;color:#fff;border:1px solid #454b52;border-radius:7px;font-size:15px}.vals{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.val{background:#101214;padding:8px;text-align:center;border-radius:8px}.val b{display:block;color:#aaa;font-size:11px}.val span{font-size:15px}pre{white-space:pre-wrap;word-break:break-word;background:#101214;padding:10px;border-radius:8px;font-size:11px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{border-bottom:1px solid #333;padding:6px;text-align:left}.ok{color:#7ee787}.bad{color:#ff7b72}
-</style></head><body>
-<header><h1>Phone Tilt Direction Tester</h1><div class="small">The dot follows how you LEAN the phone</div></header>
-<div id="stage"><div class="lh"></div><div class="lv"></div><div id="dot"></div></div><div class="wrap">
-<button id="start">ALLOW & START SENSOR</button><button id="zero">SET CURRENT POSITION AS CENTER</button><button id="stop" class="alt">STOP</button><button id="reset" class="gray">RESET CALIBRATION</button><div id="status">Use HTTPS and press Start.</div>
-<div class="card"><b>Physical direction</b><div id="direction" class="direction">Direction: —</div><div id="amount" class="direction">Tilt: —</div><div class="note">This version uses phone orientation/tilt directly instead of integrating gyro speed. This prevents the dot from continuously drifting or behaving wildly just because you rotated quickly.</div></div>
-<div class="card"><b>Calibration</b><div class="note">Start with these values. Do not leave fields empty.</div><div class="grid">
-<div><label>LEFT ↔ RIGHT scale</label><input id="hs" type="number" step=".05" value="1"></div><div><label>UP ↕ DOWN scale</label><input id="vs" type="number" step=".05" value="1"></div><div><label>LEFT ↔ RIGHT offset</label><input id="ho" type="number" step=".5" value="0"></div><div><label>UP ↕ DOWN offset</label><input id="vo" type="number" step=".5" value="0"></div></div>
-<div class="note"><b>Try:</b> normal H=1.00 V=1.00; reverse horizontal H=-1.00; reverse vertical V=-1.00; too sensitive 0.75 then 0.50; too weak 1.25 then 1.50.</div></div>
-<div class="card"><b>RAW ORIENTATION</b><div class="vals"><div class="val"><b>Left / Right</b><span id="rh">0.00°</span></div><div class="val"><b>Up / Down</b><span id="rv">0.00°</span></div></div></div>
-<div class="card"><b>CORRECTED OUTPUT</b><div class="vals"><div class="val"><b>Horizontal</b><span id="ch">0.00°</span></div><div class="val"><b>Vertical</b><span id="cv">0.00°</span></div></div><div id="reflection" class="direction">Calibration reflection: waiting…</div><div class="note">If you change a scale, RAW should stay unchanged while CORRECTED changes. The dot uses CORRECTED values directly.</div></div>
-<div class="card"><b>REPORT</b><button id="record">RECORD CURRENT TEST</button><button id="clear" class="gray">CLEAR TESTS</button><div id="log" class="note">No tests recorded.</div><button id="download">DOWNLOAD REPORT</button><button id="copy" class="gray">COPY REPORT</button><pre id="report">No report yet.</pre></div>
-</div>
-<script>
-let running=false,baseH=0,baseV=0,latest={h:0,v:0,ch:0,cv:0},previous=null,tests=[];
-const stage=document.getElementById('stage'),dot=document.getElementById('dot');
-const n=id=>{let x=parseFloat(document.getElementById(id).value);return Number.isFinite(x)?x:0};
-const cor=(raw,base,off,scale)=>(raw-base+off)*scale;
-const dir=(h,v)=>Math.max(Math.abs(h),Math.abs(v))<1?'Direction: CENTER':Math.abs(h)>=Math.abs(v)?(h>0?'Direction: RIGHT':'Direction: LEFT'):(v>0?'Direction: DOWN':'Direction: UP');
-function render(h,v){let ch=cor(h,baseH,n('ho'),n('hs')),cv=cor(v,baseV,n('vo'),n('vs'));latest={h,v,ch,cv};rh.textContent=h.toFixed(2)+'°';rv.textContent=v.toFixed(2)+'°';this.ch.textContent=ch.toFixed(2)+'°';this.cv.textContent=cv.toFixed(2)+'°';direction.textContent=dir(ch,cv);amount.textContent='Tilt: '+Math.hypot(ch,cv).toFixed(1)+'°';dot.style.left=(50+Math.max(-1,Math.min(1,ch/25))*45)+'%';dot.style.top=(50+Math.max(-1,Math.min(1,cv/25))*45)+'%';if(previous){let rd=Math.abs(h-previous.h)+Math.abs(v-previous.v),cd=Math.abs(ch-previous.ch)+Math.abs(cv-previous.cv);reflection.textContent='RAW: '+(rd<.01?'unchanged':'changing')+' | CORRECTED: '+(cd<.01?'unchanged':'changing')}}
-function orientation(e){if(running)render(Number.isFinite(e.gamma)?e.gamma:0,Number.isFinite(e.beta)?e.beta:0)}
-async function start(){try{const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const isGithubPages = location.hostname.endsWith('.github.io') || location.hostname === 'github.io';
-const isHttps = location.protocol === 'https:';
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phone Tilt Direction Tester</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:18px;color:#222}
+.card{max-width:650px;margin:auto;background:#fff;border-radius:14px;padding:18px;box-shadow:0 3px 15px #0002}
+h2{margin-top:0}
+button{padding:12px 16px;border:0;border-radius:9px;background:#222;color:#fff;font-size:16px;margin:5px;cursor:pointer}
+button:disabled{opacity:.5}
+.status{background:#eee;padding:10px;border-radius:8px;margin:10px 0;white-space:pre-wrap;font-size:14px}
+.row{display:flex;gap:10px;align-items:center;margin:12px 0}
+input{width:90px;padding:8px;font-size:16px}
+#pad{width:300px;height:300px;max-width:90vw;margin:20px auto;border:2px solid #555;border-radius:50%;position:relative;background:#fafafa}
+#dot{width:28px;height:28px;border-radius:50%;background:#111;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+pre{background:#111;color:#0f0;padding:10px;border-radius:8px;overflow:auto}
+.small{font-size:13px;color:#555}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>Phone Tilt Direction Tester</h2>
 
-if(!isHttps && !isLocal && !isGithubPages){
-  status.innerHTML='<span class="bad">This page is not HTTPS. Open the GitHub Pages HTTPS URL.</span>';
-  return;
-}if(!('DeviceOrientationEvent'in window)){status.textContent='Device orientation is not supported';return}if(typeof DeviceOrientationEvent.requestPermission==='function'){
-  let p=await DeviceOrientationEvent.requestPermission();
-  if(p!=='granted'){
-    status.innerHTML='<span class="bad">Motion/orientation permission was denied or blocked. Chrome site permission may need to be reset.</span>';
+<div id="status" class="status">Press START SENSOR. This version does NOT perform an HTTPS check.</div>
+
+<button id="start">START SENSOR</button>
+<button id="center" disabled>SET CURRENT POSITION AS CENTER</button>
+
+<div id="pad"><div id="dot"></div></div>
+
+<div class="row">LEFT ↔ RIGHT scale <input id="sx" type="number" step="0.1" value="1"></div>
+<div class="row">UP ↕ DOWN scale <input id="sy" type="number" step="0.1" value="1"></div>
+<div class="row">Dead zone <input id="dead" type="number" step="0.5" value="2"></div>
+
+<pre id="data">No sensor data yet.</pre>
+
+<p class="small">
+This tester uses DeviceOrientation (phone tilt), not the raw gyroscope.
+It does not modify BGMI or Android sensor data.
+</p>
+</div>
+
+<script>
+const statusEl=document.getElementById('status');
+const dataEl=document.getElementById('data');
+const dot=document.getElementById('dot');
+const startBtn=document.getElementById('start');
+const centerBtn=document.getElementById('center');
+const sxEl=document.getElementById('sx');
+const syEl=document.getElementById('sy');
+const deadEl=document.getElementById('dead');
+
+let running=false, last=null, cx=0, cy=0, gotData=false;
+
+function showEnvironment(){
+  statusEl.textContent =
+    "URL: "+location.href+
+    "\\nProtocol: "+location.protocol+
+    "\\nSecure context: "+window.isSecureContext+
+    "\\nHost: "+location.host+
+    "\\nDeviceOrientation API: "+("DeviceOrientationEvent" in window)+
+    "\\nPermission API: "+(typeof DeviceOrientationEvent !== "undefined" &&
+                            typeof DeviceOrientationEvent.requestPermission === "function");
+}
+showEnvironment();
+
+function handleOrientation(e){
+  gotData=true;
+  if(e.gamma==null || e.beta==null){
+    statusEl.textContent="Sensor event received, but beta/gamma are unavailable.";
     return;
   }
+  last={gamma:e.gamma,beta:e.beta};
+  centerBtn.disabled=false;
+  update();
 }
-running=true;
-eventSeen=false;
-addEventListener('deviceorientation',orientationWithCheck,true);
-status.innerHTML='<span class="ok">Sensor permission accepted. Waiting for orientation data…</span>';
-setTimeout(()=>{
-  if(running && !eventSeen){
-    status.innerHTML='<span class="bad">Permission is OK, but Chrome is not sending orientation data. Check Chrome → Site settings → Motion sensors for this site.</span>';
-  } else if(running){
-    status.innerHTML='<span class="ok">Sensor running — hold normally and lean slowly.</span>';
-  }
-},2000);}catch(e){status.textContent='Sensor error: '+e.message}}
-function zero(){if(!running){status.textContent='Start sensor first';return}baseH=latest.h;baseV=latest.v;reflection.textContent='Current position set as CENTER';dot.style.left='50%';dot.style.top='50%'}
-let eventSeen=false;
-const originalOrientation=orientation;
-function orientationWithCheck(e){ eventSeen=true; originalOrientation(e); }
 
-function stop(){running=false;removeEventListener('deviceorientation',orientationWithCheck,true);status.textContent='Stopped'}
-function reset(){hs.value=vs.value=1;ho.value=vo.value=0;baseH=latest.h;baseV=latest.v;previous=null;dot.style.left='50%';dot.style.top='50%';reflection.textContent='Calibration reflection: waiting…'}
-function record(){let q={time:new Date().toLocaleString(),h:latest.h,v:latest.v,ch:latest.ch,cv:latest.cv,hs:n('hs'),vs:n('vs'),ho:n('ho'),vo:n('vo'),dir:dir(latest.ch,latest.cv)};tests.push(q);previous={...latest};renderLog();makeReport()}
-function renderLog(){if(!tests.length){log.textContent='No tests recorded.';return}let s='<table><tr><th>#</th><th>Direction</th><th>Raw H/V</th><th>Corrected H/V</th><th>Scale</th></tr>';tests.forEach((q,i)=>s+=`<tr><td>${i+1}</td><td>${q.dir.replace('Direction: ','')}</td><td>${q.h.toFixed(2)} / ${q.v.toFixed(2)}</td><td>${q.ch.toFixed(2)} / ${q.cv.toFixed(2)}</td><td>${q.hs} / ${q.vs}</td></tr>`);log.innerHTML=s+'</table>'}
-function makeReport(){let s='PHONE TILT DIRECTION & CALIBRATION REPORT\nGenerated: '+new Date().toString()+'\n\nThis webpage transforms browser orientation only; it does not modify the Realme sensor/HAL/BGMI.\n\nCENTER: H='+baseH.toFixed(3)+'°, V='+baseV.toFixed(3)+'°\nCALIBRATION: H scale='+n('hs')+' offset='+n('ho')+'; V scale='+n('vs')+' offset='+n('vo')+'\n\nTESTS\n';tests.forEach((q,i)=>s+=`#${i+1} ${q.time}\n${q.dir}\nRAW H/V: ${q.h.toFixed(3)} / ${q.v.toFixed(3)}°\nCORRECTED H/V: ${q.ch.toFixed(3)} / ${q.cv.toFixed(3)}°\nSCALE H/V: ${q.hs} / ${q.vs}\n\n`);s+='If RAW stays unchanged while CORRECTED changes after changing a scale, webpage calibration is working. It does not recalibrate Android hardware.';report.textContent=s;return s}
-start.onclick=start;zero.onclick=zero;stop.onclick=stop;reset.onclick=reset;record.onclick=record;clear.onclick=()=>{tests=[];renderLog();makeReport()};download.onclick=()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([makeReport()],{type:'text/plain'}));a.download='phone_tilt_calibration_report.txt';a.click()};copy.onclick=async()=>{try{await navigator.clipboard.writeText(makeReport());status.textContent='Report copied'}catch(e){status.textContent='Use Download Report'}}; 
-</script></body></html>
+function update(){
+  if(!last)return;
+  let x=(last.gamma-cx)*parseFloat(sxEl.value||1);
+  let y=(last.beta-cy)*parseFloat(syEl.value||1);
+  const dz=parseFloat(deadEl.value||0);
+  if(Math.abs(x)<dz)x=0;
+  if(Math.abs(y)<dz)y=0;
+
+  const max=45;
+  const px=Math.max(-135,Math.min(135,x/max*135));
+  const py=Math.max(-135,Math.min(135,y/max*135));
+  dot.style.left=(150+px)+"px";
+  dot.style.top=(150+py)+"px";
+
+  dataEl.textContent=
+    "RAW gamma (left/right): "+last.gamma.toFixed(2)+"°"+
+    "\\nRAW beta (up/down):    "+last.beta.toFixed(2)+"°"+
+    "\\nCENTER gamma:          "+cx.toFixed(2)+"°"+
+    "\\nCENTER beta:           "+cy.toFixed(2)+"°"+
+    "\\nCORRECTED X:           "+x.toFixed(2)+"°"+
+    "\\nCORRECTED Y:           "+y.toFixed(2)+"°";
+}
+
+async function startSensor(){
+  showEnvironment();
+  statusEl.textContent="Starting sensor…";
+
+  try{
+    if(typeof DeviceOrientationEvent==="undefined"){
+      statusEl.textContent="DeviceOrientationEvent is not available in this browser/device.";
+      return;
+    }
+
+    // Some browsers expose requestPermission; others do not.
+    if(typeof DeviceOrientationEvent.requestPermission==="function"){
+      const permission=await DeviceOrientationEvent.requestPermission();
+      if(permission!=="granted"){
+        statusEl.textContent="Motion/orientation permission was not granted. Check the browser/site sensor permission.";
+        return;
+      }
+    }
+
+    window.addEventListener("deviceorientation",handleOrientation,true);
+    running=true;
+    startBtn.disabled=true;
+    centerBtn.disabled=false;
+    statusEl.textContent="Sensor listener started. Move/tilt the phone now…";
+
+    setTimeout(()=>{
+      if(!gotData){
+        statusEl.textContent=
+          "Listener started, but NO orientation events arrived.\\n"+
+          "The page is being served from:\\n"+location.href+
+          "\\n\\nSecure context: "+window.isSecureContext+
+          "\\n\\nIf Secure context is true, check Chrome site permissions for Motion sensors.";
+      }
+    },3000);
+  }catch(err){
+    statusEl.textContent="Sensor start error: "+err.name+" — "+err.message;
+  }
+}
+
+startBtn.addEventListener("click",startSensor);
+
+centerBtn.addEventListener("click",()=>{
+  if(!last)return;
+  cx=last.gamma;
+  cy=last.beta;
+  update();
+  statusEl.textContent="Current phone position saved as CENTER.";
+});
+
+sxEl.addEventListener("input",update);
+syEl.addEventListener("input",update);
+deadEl.addEventListener("input",update);
+</script>
+</body>
+</html>
