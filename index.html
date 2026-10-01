@@ -267,6 +267,8 @@ function setCenter(){
  baseV=latest.v;
  targetX=0;
  targetY=0;
+ filteredTargetX=currentX;
+ filteredTargetY=currentY;
  setStatus("Current phone position saved as CENTER.","ok");
  render(latest.h,latest.v);
 }
@@ -284,15 +286,36 @@ function resetCalibration(){
  hs.value=1; vs.value=1; ho.value=0; vo.value=0;
  baseH=latest.h; baseV=latest.v;
  targetX=targetY=0;
+ filteredTargetX=filteredTargetY=0;
  currentX=currentY=0;
  reflection.textContent="Calibration reflection: waiting…";
  if(gotOrientation) render(latest.h,latest.v);
 }
 
+// Two-stage smoothing + a hard speed limit.
+// This prevents a sudden sensor jump from sending the dot immediately
+// to the opposite side of the circle.
+let filteredTargetX=0, filteredTargetY=0;
+
 function animationLoop(){
- const smoothing=.16;
- currentX+=(targetX-currentX)*smoothing;
- currentY+=(targetY-currentY)*smoothing;
+ const targetFilter=.055;   // smooths incoming sensor target
+ const follow=.085;         // dot follows filtered target
+ const maxStep=.012;        // maximum normalized movement per frame
+
+ // First smooth the sensor target itself.
+ filteredTargetX += (targetX-filteredTargetX)*targetFilter;
+ filteredTargetY += (targetY-filteredTargetY)*targetFilter;
+
+ // Then move the dot toward the filtered target.
+ let dx=(filteredTargetX-currentX)*follow;
+ let dy=(filteredTargetY-currentY)*follow;
+
+ // Limit movement speed so it can NEVER snap across the screen.
+ dx=clamp(dx,-maxStep,maxStep);
+ dy=clamp(dy,-maxStep,maxStep);
+
+ currentX+=dx;
+ currentY+=dy;
 
  const x=clamp(50+currentX*45,5,95);
  const y=clamp(50+currentY*45,5,95);
