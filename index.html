@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Permissions-Policy" content="accelerometer=*, gyroscope=*, magnetometer=*">
+<title>Gyroscope Direction & Temporary Calibration</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101214;color:#f4f4f4;font-family:Arial,sans-serif}
+header{padding:16px;text-align:center;background:#181b1f}
+h1{font-size:20px;margin:0 0 5px}
+.small{font-size:12px;color:#aeb4bb}
+#stage{height:48vh;min-height:300px;margin:12px;border:2px solid #3b4148;border-radius:16px;background:#15181b;position:relative;overflow:hidden}
+#dot{position:absolute;width:30px;height:30px;border-radius:50%;background:#00e5ff;box-shadow:0 0 22px #00e5ff;left:50%;top:50%;transform:translate(-50%,-50%)}
+.lineH,.lineV{position:absolute;background:#2b3036}
+.lineH{height:1px;left:0;right:0;top:50%}
+.lineV{width:1px;top:0;bottom:0;left:50%}
+.wrap{padding:0 12px 20px}
+button{width:100%;padding:13px;margin:5px 0;border:0;border-radius:9px;background:#2d6f55;color:#fff;font-size:16px;font-weight:700}
+button.secondary{background:#8b2f5c}
+button.gray{background:#343a40}
+#status{text-align:center;color:#ffd166;font-size:13px;padding:6px}
+.card{background:#181b1f;border-radius:11px;padding:12px;margin-top:9px}
+.vals{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.val{background:#101214;border-radius:8px;padding:9px;text-align:center}
+.val b{display:block;color:#aeb4bb;font-size:11px}
+.val span{font-size:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{font-size:12px;color:#aeb4bb}
+input{width:100%;padding:9px;margin-top:4px;background:#101214;color:#fff;border:1px solid #454b52;border-radius:7px;font-size:15px}
+.note{font-size:12px;color:#aeb4bb;line-height:1.5;margin-top:9px}
+.good{color:#7ee787}
+.bad{color:#ff7b72}
+</style>
+</head>
+<body>
+<header>
+<h1>Gyroscope Direction Tester</h1>
+<div class="small">Temporary calibration • dot follows detected rotation</div>
+</header>
+
+<div id="stage">
+<div class="lineH"></div><div class="lineV"></div><div id="dot"></div>
+</div>
+
+<div class="wrap">
+<button id="permission">ALLOW & START SENSOR</button>
+<button id="stop" class="secondary">STOP</button>
+<button id="reset" class="gray">RESET DOT + CALIBRATION</button>
+<div id="status">Waiting for sensor permission…</div>
+
+<div class="card">
+<b>Raw browser sensor data</b>
+<div class="vals" style="margin-top:8px">
+<div class="val"><b>Alpha</b><span id="alpha">0.00</span></div>
+<div class="val"><b>Beta</b><span id="beta">0.00</span></div>
+<div class="val"><b>Gamma</b><span id="gamma">0.00</span></div>
+</div>
+<div class="note">Values are angular velocity in °/s when the browser provides rotationRate.</div>
+</div>
+
+<div class="card">
+<b>Temporary calibration</b>
+<div class="note">Only this webpage is changed. These values cannot modify the Realme sensor HAL or BGMI.</div>
+<div class="grid" style="margin-top:8px">
+<div><label>Alpha offset</label><input id="oa" type="number" step="0.1" value="0"></div>
+<div><label>Alpha scale</label><input id="sa" type="number" step="0.01" value="1"></div>
+<div><label>Beta offset</label><input id="ob" type="number" step="0.1" value="0"></div>
+<div><label>Beta scale</label><input id="sb" type="number" step="0.01" value="1"></div>
+<div><label>Gamma offset</label><input id="og" type="number" step="0.1" value="0"></div>
+<div><label>Gamma scale</label><input id="sg" type="number" step="0.01" value="1"></div>
+</div>
+</div>
+
+<div class="card">
+<b>Corrected values</b>
+<div class="vals" style="margin-top:8px">
+<div class="val"><b>Alpha</b><span id="ca">0.00</span></div>
+<div class="val"><b>Beta</b><span id="cb">0.00</span></div>
+<div class="val"><b>Gamma</b><span id="cg">0.00</span></div>
+</div>
+</div>
+
+<div class="card">
+<b>Recommended starting values for your test</b>
+<div class="note">
+Alpha offset <b>0</b>, scale <b>1.00</b><br>
+Beta offset <b>0</b>, scale <b>1.00</b><br>
+Gamma offset <b>0</b>, scale <b>1.00</b><br><br>
+If one direction is exactly reversed, test that axis with scale <b>-1.00</b>.
+Do not start by changing offsets. For sensitivity, try 0.50, 0.75, 1.25 or 1.50.
+</div>
+</div>
+</div>
+
+<script>
+let active=false,last=0,x=0,y=0;
+
+const stage=document.getElementById('stage');
+const dot=document.getElementById('dot');
+const status=document.getElementById('status');
+
+function n(id){
+  const v=parseFloat(document.getElementById(id).value);
+  return Number.isFinite(v)?v:0;
+}
+function resetDot(){
+  x=stage.clientWidth/2;
+  y=stage.clientHeight/2;
+  dot.style.left=x+'px';
+  dot.style.top=y+'px';
+}
+resetDot();
+window.addEventListener('resize',resetDot);
+
+function corrected(v,o,s){return (v+o)*s}
+
+function motion(e){
+  if(!active)return;
+  const r=e.rotationRate;
+  if(!r)return;
+
+  const a=Number.isFinite(r.alpha)?r.alpha:0;
+  const b=Number.isFinite(r.beta)?r.beta:0;
+  const g=Number.isFinite(r.gamma)?r.gamma:0;
+
+  document.getElementById('alpha').textContent=a.toFixed(2);
+  document.getElementById('beta').textContent=b.toFixed(2);
+  document.getElementById('gamma').textContent=g.toFixed(2);
+
+  const ca=corrected(a,n('oa'),n('sa'));
+  const cb=corrected(b,n('ob'),n('sb'));
+  const cg=corrected(g,n('og'),n('sg'));
+
+  document.getElementById('ca').textContent=ca.toFixed(2);
+  document.getElementById('cb').textContent=cb.toFixed(2);
+  document.getElementById('cg').textContent=cg.toFixed(2);
+
+  const now=performance.now();
+  if(!last)last=now;
+  const dt=Math.min((now-last)/1000,0.05);
+  last=now;
+
+  // Beta controls horizontal movement; Gamma controls vertical movement.
+  const sensitivity=3;
+  x += cb*dt*sensitivity;
+  y += cg*dt*sensitivity;
+
+  const w=stage.clientWidth,h=stage.clientHeight;
+  x=Math.max(15,Math.min(w-15,x));
+  y=Math.max(15,Math.min(h-15,y));
+  dot.style.left=x+'px';
+  dot.style.top=y+'px';
+}
+
+async function start(){
+  try{
+    if(!window.isSecureContext && location.hostname!=='localhost'){
+      status.innerHTML='<span class="bad">Not a secure page. Open this on HTTPS (GitHub Pages), not file://.</span>';
+      return;
+    }
+    if(!('DeviceMotionEvent' in window)){
+      status.innerHTML='<span class="bad">DeviceMotionEvent is not supported by this browser.</span>';
+      return;
+    }
+
+    if(typeof DeviceMotionEvent.requestPermission==='function'){
+      status.textContent='Requesting motion-sensor permission…';
+      const p=await DeviceMotionEvent.requestPermission();
+      if(p!=='granted'){
+        status.innerHTML='<span class="bad">Permission was denied. Check Chrome site permissions and try again.</span>';
+        return;
+      }
+    }
+
+    active=true;last=0;resetDot();
+    window.removeEventListener('devicemotion',motion,true);
+    window.addEventListener('devicemotion',motion,true);
+    status.innerHTML='<span class="good">Sensor running. Slowly rotate the phone first.</span>';
+  }catch(err){
+    status.innerHTML='<span class="bad">Sensor error: '+String(err.message||err)+'</span>';
+  }
+}
+
+function stop(){
+  active=false;last=0;
+  window.removeEventListener('devicemotion',motion,true);
+  status.textContent='Stopped';
+}
+
+function reset(){
+  ['oa','ob','og'].forEach(id=>document.getElementById(id).value='0');
+  ['sa','sb','sg'].forEach(id=>document.getElementById(id).value='1');
+  resetDot();
+}
+
+document.getElementById('permission').onclick=start;
+document.getElementById('stop').onclick=stop;
+document.getElementById('reset').onclick=reset;
+</script>
+</body>
+</html>
