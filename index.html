@@ -1,124 +1,304 @@
 <!doctype html>
-<html><head>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta http-equiv="Permissions-Policy" content="accelerometer=*, gyroscope=*, magnetometer=*">
-<title>Gyro Direction Calibration Report</title>
+<title>Gyro Direction Calibration Tester</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#101214;color:#eee;font:15px Arial,sans-serif}
-header{text-align:center;padding:15px;background:#181b1f}h1{font-size:20px;margin:0 0 5px}.small,.note{font-size:12px;color:#aeb4bb;line-height:1.5}
-#stage{height:42vh;min-height:280px;margin:12px;border:2px solid #444;border-radius:16px;position:relative;overflow:hidden;background:#15181b}
+*{box-sizing:border-box}
+body{margin:0;background:#101214;color:#eee;font-family:Arial,sans-serif}
+header{padding:15px;text-align:center;background:#181b1f}
+h1{font-size:20px;margin:0 0 5px}.small,.note{font-size:12px;color:#aeb4bb;line-height:1.5}
+#stage{height:40vh;min-height:270px;margin:12px;border:2px solid #444;border-radius:16px;background:#15181b;position:relative;overflow:hidden}
 #dot{position:absolute;width:30px;height:30px;border-radius:50%;background:#00e5ff;box-shadow:0 0 22px #00e5ff;left:50%;top:50%;transform:translate(-50%,-50%)}
 .lh,.lv{position:absolute;background:#2b3036}.lh{height:1px;left:0;right:0;top:50%}.lv{width:1px;top:0;bottom:0;left:50%}
-.wrap{padding:0 12px 20px}.card{background:#181b1f;padding:12px;border-radius:11px;margin-top:9px}
+.wrap{padding:0 12px 20px}.card{background:#181b1f;border-radius:11px;padding:12px;margin-top:9px}
 button{width:100%;padding:12px;margin:4px 0;border:0;border-radius:9px;background:#2d6f55;color:#fff;font-weight:bold}
-.alt{background:#8b2f5c}.gray{background:#343a40}#status{text-align:center;color:#ffd166;padding:7px;font-size:13px}
+.alt{background:#8b2f5c}.gray{background:#343a40}#status{text-align:center;color:#ffd166;font-size:13px;padding:7px}
+.direction{background:#101214;border-radius:8px;padding:10px;margin-top:7px;font-weight:bold}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{font-size:12px;color:#aaa}
-input{width:100%;padding:9px;margin-top:4px;background:#101214;color:#fff;border:1px solid #454b52;border-radius:7px}
-.vals{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}.val{background:#101214;padding:8px;text-align:center;border-radius:8px}.val b{display:block;color:#aaa;font-size:11px}
-.direction{padding:10px;background:#101214;border-radius:8px;margin-top:7px;font-weight:bold}
-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}td,th{border-bottom:1px solid #333;padding:6px;text-align:left}
+input{width:100%;padding:9px;margin-top:4px;background:#101214;color:#fff;border:1px solid #454b52;border-radius:7px;font-size:15px}
+.vals{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}
+.val{background:#101214;padding:8px;text-align:center;border-radius:8px}.val b{display:block;color:#aaa;font-size:11px}.val span{font-size:15px}
 pre{white-space:pre-wrap;word-break:break-word;background:#101214;padding:10px;border-radius:8px;font-size:11px}
-.ok{color:#7ee787}.bad{color:#ff7b72}
-</style></head><body>
-<header><h1>Gyroscope Direction Calibration</h1><div class="small">Direction names + temporary calibration + test report</div></header>
-<div id="stage"><div class="lh"></div><div class="lv"></div><div id="dot"></div></div>
-<div class="wrap">
-<button id="start">ALLOW & START SENSOR</button><button id="stop" class="alt">STOP</button><button id="reset" class="gray">RESET</button>
-<div id="status">Waiting for permission…</div>
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}td,th{border-bottom:1px solid #333;padding:6px;text-align:left}
+.ok{color:#7ee787}.bad{color:#ff7b72}.yellow{color:#ffd166}
+</style>
+</head>
+<body>
+<header>
+<h1>Gyroscope Direction Calibration Tester</h1>
+<div class="small">Raw sensor → temporary calibration → dot output</div>
+</header>
 
-<div class="card"><b>What direction is detected?</b>
+<div id="stage">
+<div class="lh"></div><div class="lv"></div><div id="dot"></div>
+</div>
+
+<div class="wrap">
+<button id="start">ALLOW & START SENSOR</button>
+<button id="stop" class="alt">STOP</button>
+<button id="reset" class="gray">RESET CALIBRATION + DOT</button>
+<div id="status">Open this page over HTTPS and press Start.</div>
+
+<div class="card">
+<b>Physical direction</b>
 <div id="direction" class="direction">Direction: —</div>
 <div id="movement" class="direction">Movement: —</div>
-<div class="note">Horizontal = left/right, Vertical = up/down, Twist = rotating the phone around its face. The exact sign can depend on how the phone is held.</div></div>
-
-<div class="card"><b>Temporary calibration</b>
-<div class="note">You do not need to know Alpha/Beta/Gamma. Change these direction controls. Formula: corrected = (raw + offset) × scale.</div>
-<div class="grid">
-<div><label>Horizontal offset</label><input id="ho" value="0" type="number" step=".1"></div>
-<div><label>Horizontal scale</label><input id="hs" value="1" type="number" step=".05"></div>
-<div><label>Vertical offset</label><input id="vo" value="0" type="number" step=".1"></div>
-<div><label>Vertical scale</label><input id="vs" value="1" type="number" step=".05"></div>
-<div><label>Twist offset</label><input id="to" value="0" type="number" step=".1"></div>
-<div><label>Twist scale</label><input id="ts" value="1" type="number" step=".05"></div>
+<div class="note">
+Move the phone slowly. The page identifies the dominant rotation as simple directions:
+<b>LEFT / RIGHT</b>, <b>UP / DOWN</b>, or <b>TWIST LEFT / TWIST RIGHT</b>.
 </div>
-<div class="note"><b>Try these:</b><br>
-Normal: H 1.00 / V 1.00 / T 1.00<br>
-Reverse a direction: change its scale to -1.00<br>
-Half sensitivity: 0.50<br>More sensitivity: 1.50 or 2.00<br>
-Small bias experiment: offset +0.5 or -0.5
-</div></div>
+</div>
 
-<div class="card"><b>Live values</b><div class="vals">
-<div class="val"><b>Horizontal raw</b><span id="h">0</span></div>
-<div class="val"><b>Vertical raw</b><span id="v">0</span></div>
-<div class="val"><b>Twist raw</b><span id="t">0</span></div></div>
+<div class="card">
+<b>Calibration controls</b>
+<div class="note">
+These are now connected directly to the same values used to move the dot.
+Start with all scales at <b>1.00</b>. If a direction is exactly opposite, use <b>-1.00</b>.
+</div>
+<div class="grid">
+<div><label>LEFT ↔ RIGHT scale</label><input id="hs" type="number" step=".05" value="1"></div>
+<div><label>UP ↕ DOWN scale</label><input id="vs" type="number" step=".05" value="1"></div>
+<div><label>TWIST ↺ ↻ scale</label><input id="ts" type="number" step=".05" value="1"></div>
+<div><label>Overall sensitivity</label><input id="sens" type="number" step=".1" value="3"></div>
+<div><label>LEFT ↔ RIGHT offset</label><input id="ho" type="number" step=".1" value="0"></div>
+<div><label>UP ↕ DOWN offset</label><input id="vo" type="number" step=".1" value="0"></div>
+<div><label>TWIST offset</label><input id="to" type="number" step=".1" value="0"></div>
+</div>
+<div class="note">
+Try these values one at a time:<br>
+<b>Normal:</b> H 1.00 / V 1.00 / T 1.00<br>
+<b>Reverse left/right:</b> H -1.00<br>
+<b>Reverse up/down:</b> V -1.00<br>
+<b>Reverse twist:</b> T -1.00<br>
+<b>Half sensitivity:</b> 0.50<br>
+<b>Higher sensitivity:</b> 1.50 or 2.00
+</div>
+</div>
+
+<div class="card">
+<b>1. RAW PHONE SENSOR</b>
 <div class="vals">
-<div class="val"><b>Horizontal corrected</b><span id="ch">0</span></div>
-<div class="val"><b>Vertical corrected</b><span id="cv">0</span></div>
-<div class="val"><b>Twist corrected</b><span id="ct">0</span></div></div></div>
+<div class="val"><b>H raw</b><span id="rh">0.00</span></div>
+<div class="val"><b>V raw</b><span id="rv">0.00</span></div>
+<div class="val"><b>T raw</b><span id="rt">0.00</span></div>
+</div>
+</div>
 
-<div class="card"><b>Did the changed value affect the sensor?</b>
-<div id="check" class="direction">Waiting…</div>
-<div class="note">This page cannot change the actual phone sensor/HAL. It can only transform the browser reading. The check compares RAW versus CORRECTED values so you can prove whether the webpage calculation changed.</div></div>
+<div class="card">
+<b>2. TEMPORARY CALIBRATION OUTPUT</b>
+<div class="vals">
+<div class="val"><b>H corrected</b><span id="ch">0.00</span></div>
+<div class="val"><b>V corrected</b><span id="cv">0.00</span></div>
+<div class="val"><b>T corrected</b><span id="ct">0.00</span></div>
+</div>
+<div id="reflection" class="direction">Calibration reflection: waiting…</div>
+<div class="note">
+If you change a scale from <b>1</b> to <b>-1</b>, RAW must remain the same while CORRECTED changes sign. That proves the temporary calibration is being applied to the dot.
+</div>
+</div>
 
-<div class="card"><b>Test report</b>
-<button id="record">RECORD CURRENT TEST</button><button id="clear" class="gray">CLEAR LOG</button>
+<div class="card">
+<b>3. DOT OUTPUT CHECK</b>
+<div id="dotcheck" class="direction">Move the phone to test the dot.</div>
+<div class="note">
+The dot uses the corrected horizontal and vertical channels. Twist is shown separately as a direction indicator.
+</div>
+</div>
+
+<div class="card">
+<b>TEST REPORT</b>
+<button id="record">RECORD CURRENT TEST</button>
+<button id="clear" class="gray">CLEAR TESTS</button>
 <div id="log" class="note">No tests recorded.</div>
-<button id="download">DOWNLOAD REPORT</button><button id="copy" class="gray">COPY REPORT</button>
-<pre id="report">No report yet.</pre></div>
+<button id="download">DOWNLOAD REPORT</button>
+<button id="copy" class="gray">COPY REPORT</button>
+<pre id="report">No report yet.</pre>
+</div>
 </div>
 
 <script>
-let on=false,last=0,px=0,py=0,latest={h:0,v:0,t:0,ch:0,cv:0,ct:0},oldRaw=null,tests=[];
-const S=document.getElementById('stage'),D=document.getElementById('dot');
-function n(id){let x=parseFloat(document.getElementById(id).value);return Number.isFinite(x)?x:0}
-function resetDot(){px=S.clientWidth/2;py=S.clientHeight/2;D.style.left=px+'px';D.style.top=py+'px'}
-function c(x,o,s){return (x+o)*s}
-function dir(h,v,t){let a=Math.abs(h),b=Math.abs(v),q=Math.abs(t);if(Math.max(a,b,q)<.8)return 'Direction: Still / very small';if(q>a&&q>b)return t>0?'Direction: Twist →':'Direction: Twist ←';if(a>=b)return h>0?'Direction: Horizontal →':'Direction: Horizontal ←';return v>0?'Direction: Vertical ↓':'Direction: Vertical ↑'}
-resetDot();onresize=resetDot;
+let running=false,lastTime=0,x=0,y=0;
+let latest={h:0,v:0,t:0,ch:0,cv:0,ct:0};
+let previous=null,tests=[];
+const stage=document.getElementById('stage'),dot=document.getElementById('dot');
 
+function val(id){const n=parseFloat(document.getElementById(id).value);return Number.isFinite(n)?n:0}
+function corrected(raw,offset,scale){return (raw+offset)*scale}
+function resetDot(){
+ x=stage.clientWidth/2;y=stage.clientHeight/2;
+ dot.style.left=x+'px';dot.style.top=y+'px';
+}
+function direction(h,v,t){
+ const ah=Math.abs(h),av=Math.abs(v),at=Math.abs(t);
+ if(Math.max(ah,av,at)<0.8)return 'Direction: STILL / very small';
+ if(at>ah && at>av)return t>0?'Direction: TWIST RIGHT':'Direction: TWIST LEFT';
+ if(ah>=av)return h>0?'Direction: RIGHT':'Direction: LEFT';
+ return v>0?'Direction: DOWN':'Direction: UP';
+}
 function motion(e){
- if(!on||!e.rotationRate)return;
- let r=e.rotationRate,h=Number.isFinite(r.alpha)?r.alpha:0,v=Number.isFinite(r.beta)?r.beta:0,t=Number.isFinite(r.gamma)?r.gamma:0;
- let ch=c(h,n('ho'),n('hs')),cv=c(v,n('vo'),n('vs')),ct=c(t,n('to'),n('ts'));
+ if(!running||!e.rotationRate)return;
+ const r=e.rotationRate;
+
+ /*
+   IMPORTANT:
+   We deliberately keep one fixed mapping:
+   H = alpha, V = beta, T = gamma.
+   The calibration controls and the dot use THESE SAME corrected values.
+ */
+ const h=Number.isFinite(r.alpha)?r.alpha:0;
+ const v=Number.isFinite(r.beta)?r.beta:0;
+ const t=Number.isFinite(r.gamma)?r.gamma:0;
+
+ const ch=corrected(h,val('ho'),val('hs'));
+ const cv=corrected(v,val('vo'),val('vs'));
+ const ct=corrected(t,val('to'),val('ts'));
+
  latest={h,v,t,ch,cv,ct};
- ['h','v','t'].forEach((id,i)=>document.getElementById(id).textContent=[h,v,t][i].toFixed(2));
- ['ch','cv','ct'].forEach((id,i)=>document.getElementById(id).textContent=[ch,cv,ct][i].toFixed(2));
- document.getElementById('direction').textContent=dir(ch,cv,ct);
- let m=Math.sqrt(ch*ch+cv*cv+ct*ct);document.getElementById('movement').textContent=m<.8?'Movement: Very slow / still':m<20?'Movement: Slow':'Movement: Fast';
- let now=performance.now();if(!last)last=now;let dt=Math.min((now-last)/1000,.05);last=now;
- px+=cv*dt*3;py+=ct*dt*3;px=Math.max(15,Math.min(S.clientWidth-15,px));py=Math.max(15,Math.min(S.clientHeight-15,py));D.style.left=px+'px';D.style.top=py+'px';
- if(oldRaw){let rd=Math.abs(h-oldRaw.h)+Math.abs(v-oldRaw.v)+Math.abs(t-oldRaw.t),cd=Math.abs(ch-oldRaw.ch)+Math.abs(cv-oldRaw.cv)+Math.abs(ct-oldRaw.ct);document.getElementById('check').textContent='RAW '+(rd<.01?'unchanged':'changing')+' | CORRECTED '+(cd<.01?'unchanged':'changing')}
+
+ document.getElementById('rh').textContent=h.toFixed(2);
+ document.getElementById('rv').textContent=v.toFixed(2);
+ document.getElementById('rt').textContent=t.toFixed(2);
+ document.getElementById('ch').textContent=ch.toFixed(2);
+ document.getElementById('cv').textContent=cv.toFixed(2);
+ document.getElementById('ct').textContent=ct.toFixed(2);
+
+ document.getElementById('direction').textContent=direction(ch,cv,ct);
+
+ const mag=Math.sqrt(ch*ch+cv*cv+ct*ct);
+ document.getElementById('movement').textContent=
+   mag<0.8?'Movement: VERY SLOW / STILL':
+   mag<20?'Movement: SLOW':'Movement: FAST';
+
+ const now=performance.now();
+ if(!lastTime)lastTime=now;
+ const dt=Math.min((now-lastTime)/1000,0.05);
+ lastTime=now;
+
+ const sensitivity=val('sens');
+ x += ch*dt*sensitivity;
+ y += cv*dt*sensitivity;
+
+ x=Math.max(15,Math.min(stage.clientWidth-15,x));
+ y=Math.max(15,Math.min(stage.clientHeight-15,y));
+ dot.style.left=x+'px';
+ dot.style.top=y+'px';
+
+ if(previous){
+   const rawDelta=Math.abs(h-previous.h)+Math.abs(v-previous.v)+Math.abs(t-previous.t);
+   const correctedDelta=Math.abs(ch-previous.ch)+Math.abs(cv-previous.cv)+Math.abs(ct-previous.ct);
+
+   document.getElementById('reflection').textContent=
+     'RAW: '+(rawDelta<0.01?'unchanged':'changing')+
+     '  |  CORRECTED: '+(correctedDelta<0.01?'unchanged':'changing');
+
+   document.getElementById('dotcheck').textContent=
+     direction(ch,cv,ct)+'  |  Dot position: '+Math.round(x)+', '+Math.round(y);
+ }
 }
 async function start(){
  try{
-  if(!window.isSecureContext&&location.hostname!=='localhost'){document.getElementById('status').innerHTML='<span class="bad">Use HTTPS/GitHub Pages, not file://</span>';return}
-  if(!('DeviceMotionEvent'in window)){document.getElementById('status').textContent='Motion sensor API not supported';return}
-  if(typeof DeviceMotionEvent.requestPermission==='function'){let p=await DeviceMotionEvent.requestPermission();if(p!=='granted'){document.getElementById('status').innerHTML='<span class="bad">Permission denied</span>';return}}
-  on=true;last=0;resetDot();removeEventListener('devicemotion',motion,true);addEventListener('devicemotion',motion,true);document.getElementById('status').innerHTML='<span class="ok">Sensor running — move slowly first</span>'
- }catch(e){document.getElementById('status').textContent='Sensor error: '+e.message}
+  if(!window.isSecureContext&&location.hostname!=='localhost'){
+   document.getElementById('status').innerHTML='<span class="bad">HTTPS is required. Use your GitHub Pages URL, not file://</span>';
+   return;
+  }
+  if(!('DeviceMotionEvent' in window)){
+   document.getElementById('status').innerHTML='<span class="bad">DeviceMotionEvent is not supported.</span>';
+   return;
+  }
+  if(typeof DeviceMotionEvent.requestPermission==='function'){
+   document.getElementById('status').textContent='Requesting motion permission…';
+   const permission=await DeviceMotionEvent.requestPermission();
+   if(permission!=='granted'){
+    document.getElementById('status').innerHTML='<span class="bad">Permission denied.</span>';
+    return;
+   }
+  }
+  running=true;lastTime=0;resetDot();
+  removeEventListener('devicemotion',motion,true);
+  addEventListener('devicemotion',motion,true);
+  document.getElementById('status').innerHTML='<span class="ok">Sensor running — move slowly first.</span>';
+ }catch(err){
+  document.getElementById('status').innerHTML='<span class="bad">Sensor error: '+(err.message||err)+'</span>';
+ }
 }
-function stop(){on=false;removeEventListener('devicemotion',motion,true);document.getElementById('status').textContent='Stopped'}
+function stop(){
+ running=false;lastTime=0;removeEventListener('devicemotion',motion,true);
+ document.getElementById('status').textContent='Stopped';
+}
+function reset(){
+ ['hs','vs','ts'].forEach(id=>document.getElementById(id).value=1);
+ ['ho','vo','to'].forEach(id=>document.getElementById(id).value=0);
+ document.getElementById('sens').value=3;
+ previous=null;resetDot();
+ document.getElementById('reflection').textContent='Calibration reflection: waiting…';
+ document.getElementById('dotcheck').textContent='Move the phone to test the dot.';
+}
 function record(){
- tests.push({time:new Date().toLocaleString(),...latest,ho:n('ho'),hs:n('hs'),vo:n('vo'),vs:n('vs'),to:n('to'),ts:n('ts'),dir:dir(latest.ch,latest.cv,latest.ct)});
- oldRaw={h:latest.h,v:latest.v,t:latest.t,ch:latest.ch,cv:latest.cv,ct:latest.ct};render();makeReport()
+ const item={
+  time:new Date().toLocaleString(),
+  h:latest.h,v:latest.v,t:latest.t,
+  ch:latest.ch,cv:latest.cv,ct:latest.ct,
+  hs:val('hs'),vs:val('vs'),ts:val('ts'),
+  ho:val('ho'),vo:val('vo'),to:val('to'),
+  sens:val('sens'),
+  dir:direction(latest.ch,latest.cv,latest.ct)
+ };
+ tests.push(item);
+ previous={h:latest.h,v:latest.v,t:latest.t,ch:latest.ch,cv:latest.cv,ct:latest.ct};
+ renderLog();makeReport();
 }
-function render(){if(!tests.length){document.getElementById('log').textContent='No tests recorded.';return}
- let x='<table><tr><th>#</th><th>Direction</th><th>Raw H/V/T</th><th>Corrected H/V/T</th><th>Scale H/V/T</th></tr>';
- tests.forEach((q,i)=>x+=`<tr><td>${i+1}</td><td>${q.dir.replace('Direction: ','')}</td><td>${q.h.toFixed(2)} / ${q.v.toFixed(2)} / ${q.t.toFixed(2)}</td><td>${q.ch.toFixed(2)} / ${q.cv.toFixed(2)} / ${q.ct.toFixed(2)}</td><td>${q.hs} / ${q.vs} / ${q.ts}</td></tr>`);
- document.getElementById('log').innerHTML=x+'</table>'}
+function renderLog(){
+ if(!tests.length){
+  document.getElementById('log').textContent='No tests recorded.';
+  return;
+ }
+ let html='<table><tr><th>#</th><th>Direction</th><th>Raw H/V/T</th><th>Corrected H/V/T</th><th>Scale H/V/T</th></tr>';
+ tests.forEach((q,i)=>{
+  html+=`<tr><td>${i+1}</td><td>${q.dir.replace('Direction: ','')}</td><td>${q.h.toFixed(2)} / ${q.v.toFixed(2)} / ${q.t.toFixed(2)}</td><td>${q.ch.toFixed(2)} / ${q.cv.toFixed(2)} / ${q.ct.toFixed(2)}</td><td>${q.hs} / ${q.vs} / ${q.ts}</td></tr>`;
+ });
+ document.getElementById('log').innerHTML=html+'</table>';
+}
 function makeReport(){
- let x='GYROSCOPE DIRECTION & TEMPORARY CALIBRATION REPORT\nGenerated: '+new Date().toString()+'\n\n';
- x+='IMPORTANT: This webpage does NOT modify the phone sensor, Android HAL, or BGMI.\n\n';
- x+=`CURRENT VALUES\nHorizontal offset=${n('ho')}, scale=${n('hs')}\nVertical offset=${n('vo')}, scale=${n('vs')}\nTwist offset=${n('to')}, scale=${n('ts')}\n\nRECORDED TESTS\n`;
- tests.forEach((q,i)=>x+=`#${i+1} ${q.time}\n${q.dir}\nRAW H/V/T: ${q.h.toFixed(3)} / ${q.v.toFixed(3)} / ${q.t.toFixed(3)}\nCORRECTED H/V/T: ${q.ch.toFixed(3)} / ${q.cv.toFixed(3)} / ${q.ct.toFixed(3)}\nSCALES H/V/T: ${q.hs} / ${q.vs} / ${q.ts}\n\n`);
- x+='INTERPRETATION\nIf RAW stays the same while CORRECTED changes after you change a scale/offset, the temporary webpage calibration is working. This does not mean the actual phone sensor was recalibrated.';
- document.getElementById('report').textContent=x;return x
+ let text='GYROSCOPE DIRECTION CALIBRATION REPORT\\n';
+ text+='Generated: '+new Date().toString()+'\\n\\n';
+ text+='IMPORTANT: This webpage only transforms browser sensor readings. It cannot modify the Realme sensor, Android HAL, or BGMI.\\n\\n';
+ text+='CURRENT CALIBRATION\\n';
+ text+='Left/Right scale='+val('hs')+', offset='+val('ho')+'\\n';
+ text+='Up/Down scale='+val('vs')+', offset='+val('vo')+'\\n';
+ text+='Twist scale='+val('ts')+', offset='+val('to')+'\\n';
+ text+='Sensitivity='+val('sens')+'\\n\\n';
+ text+='TESTS\\n';
+ tests.forEach((q,i)=>{
+  text+=`#${i+1} ${q.time}\\n`;
+  text+=q.dir+'\\n';
+  text+=`RAW H/V/T: ${q.h.toFixed(3)} / ${q.v.toFixed(3)} / ${q.t.toFixed(3)}\\n`;
+  text+=`CORRECTED H/V/T: ${q.ch.toFixed(3)} / ${q.cv.toFixed(3)} / ${q.ct.toFixed(3)}\\n`;
+  text+=`SCALES H/V/T: ${q.hs} / ${q.vs} / ${q.ts}\\n\\n`;
+ });
+ text+='INTERPRETATION\\n';
+ text+='If RAW remains unchanged while CORRECTED changes when a scale is changed, the webpage calibration is working. This does not mean the physical Android sensor was recalibrated.';
+ document.getElementById('report').textContent=text;
+ return text;
 }
-document.getElementById('start').onclick=start;document.getElementById('stop').onclick=stop;
-document.getElementById('record').onclick=record;document.getElementById('clear').onclick=()=>{tests=[];render();makeReport()};
-document.getElementById('reset').onclick=()=>{['ho','vo','to'].forEach(x=>document.getElementById(x).value=0);['hs','vs','ts'].forEach(x=>document.getElementById(x).value=1);resetDot();oldRaw=null};
-document.getElementById('download').onclick=()=>{let b=new Blob([makeReport()],{type:'text/plain'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='gyro_report.txt';a.click()};
-document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(makeReport());document.getElementById('status').textContent='Report copied'}catch(e){}};
-</script></body></html>
+document.getElementById('start').onclick=start;
+document.getElementById('stop').onclick=stop;
+document.getElementById('reset').onclick=reset;
+document.getElementById('record').onclick=record;
+document.getElementById('clear').onclick=()=>{tests=[];renderLog();makeReport()};
+document.getElementById('download').onclick=()=>{
+ const blob=new Blob([makeReport()],{type:'text/plain;charset=utf-8'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);a.download='gyro_direction_report.txt';a.click();
+ URL.revokeObjectURL(a.href);
+};
+document.getElementById('copy').onclick=async()=>{
+ try{await navigator.clipboard.writeText(makeReport());document.getElementById('status').innerHTML='<span class="ok">Report copied.</span>'}
+ catch(e){document.getElementById('status').textContent='Copy blocked; use Download Report.'}
+};
+resetDot();
+</script>
+</body>
+</html>
